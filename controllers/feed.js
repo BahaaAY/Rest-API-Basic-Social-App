@@ -3,19 +3,17 @@ const { validationResult } = require("express-validator");
 const Post = require("../models/post");
 const errorHandler = require("../util/errorHandler");
 exports.getPosts = (req, res, next) => {
-  res.status(200).json({
-    posts: [
-      {
-        _id: "1",
-        title: "First Post",
-        content: "This is the first post!",
-        creator: {
-          name: "Bahaa",
-        },
-        createdAt: new Date(),
-      },
-    ],
-  });
+  Post.find()
+    .then((posts) => {
+      // Status code 200 means everything is ok
+      return res.status(200).json({
+        message: "Fetched posts successfully.",
+        posts: posts,
+      });
+    })
+    .catch((err) => {
+      errorHandler(500, "Fetching posts failed.", next);
+    });
 };
 
 exports.createPost = (req, res, next) => {
@@ -35,7 +33,7 @@ exports.createPost = (req, res, next) => {
   const post = new Post({
     title: title,
     content: content,
-    imageUrl: "images/flower.jpg",
+    imageUrl: "images/flower.png",
     creator: { name: "Bahaa" },
   });
   post
@@ -49,5 +47,25 @@ exports.createPost = (req, res, next) => {
     })
     .catch((err) => {
       errorHandler(500, "Creating post failed.", next);
+    });
+};
+
+exports.getPost = (req, res, next) => {
+  const postId = req.params.postId;
+
+  Post.findById(postId)
+    .then((post) => {
+      if (!post) {
+        // Status code 404 : Post not found!
+        return errorHandler(404, "Post not found!", next);
+      }
+      // Status code 200 means everything is ok
+      return res.status(200).json({
+        message: "Post fetched.",
+        post: post,
+      });
+    })
+    .catch((err) => {
+      errorHandler(500, "Fetching post failed.", next);
     });
 };
