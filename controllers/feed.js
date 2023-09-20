@@ -30,10 +30,15 @@ exports.createPost = (req, res, next) => {
       next
     );
   }
+  if (!req.file) {
+    // Status code 422 means something went wrong with the validation
+    return errorHandler(422, "No image provided.", next);
+  }
+
   const post = new Post({
     title: title,
     content: content,
-    imageUrl: "images/flower.png",
+    imageUrl: req.file.path,
     creator: { name: "Bahaa" },
   });
   post

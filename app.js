@@ -2,16 +2,27 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const path = require("path");
+const multer = require("multer");
 
 const feedRoutes = require("./routes/feed");
-const e = require("express");
-
+const fileFilter = require("./util/fileFilter");
 const username = require("./util/credentials").username;
 const password = require("./util/credentials").password;
 
 const MONGODB_URI = `mongodb+srv://${username}:${password}@cluster0.o8mxmhh.mongodb.net/social`;
 
 const app = express();
+
+// Multer config
+const fileStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "images");
+  },
+  filename: (req, file, cb) => {
+    cb(null, new Date().toISOString() + "-" + file.originalname);
+  },
+});
+
 app.use((req, res, next) => {
   // Fix CORS error
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -21,6 +32,9 @@ app.use((req, res, next) => {
 });
 
 app.use(bodyParser.json()); // parse application/json
+app.use(
+  multer({ storage: fileStorage, fileFilter: fileFilter }).single("image")
+); // parse multipart/form-data (file upload)
 app.use("/images", express.static(path.join(__dirname, "images")));
 app.use("/feed", feedRoutes);
 
