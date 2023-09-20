@@ -1,4 +1,7 @@
 const { validationResult } = require("express-validator");
+
+const Post = require("../models/post");
+
 exports.getPosts = (req, res, next) => {
   res.status(200).json({
     posts: [
@@ -28,17 +31,22 @@ exports.createPost = (req, res, next) => {
       errors: errors.array(),
     });
   }
-  // Status code 201 means something was created
-  return res.status(201).json({
-    message: "Post created successfully!",
-    post: {
-      _id: new Date().toISOString(),
-      title: title,
-      content: content,
-      creator: {
-        name: "Bahaa",
-      },
-      createdAt: new Date(),
-    },
+  const post = new Post({
+    title: title,
+    content: content,
+    imageUrl: "images/flower.jpg",
+    creator: { name: "Bahaa" },
   });
+  post
+    .save()
+    .then((result) => {
+      return res.status(201).json({
+        message: "Post created successfully!",
+        post: result,
+      });
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+  // Status code 201 means something was created
 };
