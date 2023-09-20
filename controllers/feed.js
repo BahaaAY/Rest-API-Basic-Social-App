@@ -1,7 +1,7 @@
 const { validationResult } = require("express-validator");
 
 const Post = require("../models/post");
-
+const errorHandler = require("../util/errorHandler");
 exports.getPosts = (req, res, next) => {
   res.status(200).json({
     posts: [
@@ -26,10 +26,11 @@ exports.createPost = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     // Status code 422 means something went wrong with the validation
-    return res.status(422).json({
-      message: "Validation failed, entered data is incorrect.",
-      errors: errors.array(),
-    });
+    return errorHandler(
+      422,
+      "Validation failed, entered data is incorrect.",
+      next
+    );
   }
   const post = new Post({
     title: title,
@@ -40,13 +41,13 @@ exports.createPost = (req, res, next) => {
   post
     .save()
     .then((result) => {
+      // Status code 201 means something was created
       return res.status(201).json({
         message: "Post created successfully!",
         post: result,
       });
     })
     .catch((err) => {
-      console.log(err);
+      errorHandler(500, "Creating post failed.", next);
     });
-  // Status code 201 means something was created
 };
