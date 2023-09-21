@@ -2,6 +2,8 @@ const { validationResult } = require("express-validator");
 
 const Post = require("../models/post");
 const errorHandler = require("../util/errorHandler");
+
+const clearImage = require("../util/clearImage");
 exports.getPosts = (req, res, next) => {
   Post.find()
     .then((posts) => {
@@ -72,5 +74,57 @@ exports.getPost = (req, res, next) => {
     })
     .catch((err) => {
       errorHandler(500, "Fetching post failed.", next);
+    });
+};
+
+exports.updatePost = (req, res, next) => {
+  const postId = req.params.postId;
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    // Status code 422 means something went wrong with the validation
+    return errorHandler(
+      422,
+      "Validation failed, entered data is incorrect.",
+      next
+    );
+  }
+  const title = req.body.title;
+  const content = req.body.content;
+  let imageUrl = req.body.image;
+  if (req.file) {
+    imageUrl = req.file.path;
+  }
+  if (!imageUrl || imageUrl === "undefined") {
+    // Status code 422 means something went wrong with the validation
+    return errorHandler(422, "No Image provided!", next);
+  }
+
+  console.log("Updating Post!: ", postId, title, content, imageUrl);
+  Post.findById(postId)
+    .then((post) => {
+      if (!post) {
+        // Status code 404 : Post not found!
+        return errorHandler(404, "Post not found!", next);
+      }
+
+      post.title = title;
+      post.content = content;
+      if (imageUrl != post.imageUrl) {
+        // Delete old image
+        console.log("Deleting old image!");
+        clearImage(post.imageUrl, next);
+      }
+      post.imageUrl = imageUrl;
+      return post.save();
+    })
+    .then((result) => {
+      // Status code 200 means everything is ok
+      return res.status(200).json({
+        message: "Post updated!",
+        post: result,
+      });
+    })
+    .catch((err) => {
+      errorHandler(500, "Updating post failed.", next);
     });
 };
