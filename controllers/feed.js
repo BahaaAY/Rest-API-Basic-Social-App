@@ -128,3 +128,25 @@ exports.updatePost = (req, res, next) => {
       errorHandler(500, "Updating post failed.", next);
     });
 };
+exports.deletePost = (req, res, next) => {
+  const postId = req.params.postId;
+  console.log("Deleting Post!: ", postId);
+  if (!postId) {
+    return errorHandler(404, "Post not found!", next);
+  }
+  Post.findByIdAndDelete(postId)
+    .then((post) => {
+      if (!post) {
+        // Status code 404 : Post not found!
+        return errorHandler(404, "Post not found!", next);
+      }
+      // Delete post image
+      console.log("Deleting post image!");
+      clearImage(post.imageUrl, next);
+      // Status code 200 means everything is ok
+      return res.status(200).json({
+        message: "Post deleted!",
+      });
+    })
+    .catch((err) => {});
+};
