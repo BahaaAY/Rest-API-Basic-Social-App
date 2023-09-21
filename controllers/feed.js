@@ -1,6 +1,7 @@
 const { validationResult } = require("express-validator");
 
 const Post = require("../models/post");
+
 const errorHandler = require("../util/errorHandler");
 
 const clearImage = require("../util/clearImage");

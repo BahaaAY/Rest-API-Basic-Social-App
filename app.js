@@ -5,6 +5,8 @@ const path = require("path");
 const multer = require("multer");
 
 const feedRoutes = require("./routes/feed");
+const authRoutes = require("./routes/auth");
+
 const fileFilter = require("./util/fileFilter");
 const username = require("./util/credentials").username;
 const password = require("./util/credentials").password;
@@ -37,12 +39,15 @@ app.use(
 ); // parse multipart/form-data (file upload)
 app.use("/images", express.static(path.join(__dirname, "images")));
 app.use("/feed", feedRoutes);
+app.use("/auth", authRoutes);
 
+// Error handling middleware
 app.use((error, req, res, next) => {
   console.log(error);
   const status = error.statusCode || 500;
   const message = error.message;
-  res.status(status).json({ message: message });
+  const data = error.data || [];
+  res.status(status).json({ message: message, data: data });
 });
 
 // Connect to MongoDB
