@@ -4,13 +4,25 @@ const Post = require("../models/post");
 const errorHandler = require("../util/errorHandler");
 
 const clearImage = require("../util/clearImage");
+
 exports.getPosts = (req, res, next) => {
+  let totalItems;
+  const currentPage = req.query.page || 1;
+  const perPage = 2;
   Post.find()
+    .countDocuments()
+    .then((count) => {
+      totalItems = count;
+      return Post.find()
+        .limit(perPage)
+        .skip((currentPage - 1) * perPage);
+    })
     .then((posts) => {
       // Status code 200 means everything is ok
       return res.status(200).json({
         message: "Fetched posts successfully.",
         posts: posts,
+        totalItems: totalItems,
       });
     })
     .catch((err) => {
