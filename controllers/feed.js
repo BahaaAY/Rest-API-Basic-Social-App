@@ -16,7 +16,8 @@ exports.getPosts = async (req, res, next) => {
 
     const posts = await Post.find()
       .limit(perPage)
-      .skip((currentPage - 1) * perPage);
+      .skip((currentPage - 1) * perPage)
+      .populate("creator", "name");
     // Status code 200 means everything is ok
     return res.status(200).json({
       message: "Fetched posts successfully.",
@@ -72,7 +73,7 @@ exports.createPost = async (req, res, next) => {
 exports.getPost = async (req, res, next) => {
   const postId = req.params.postId;
   try {
-    const post = await Post.findById(postId).populate("creator");
+    const post = await Post.findById(postId).populate("creator", "name");
     if (!post) {
       // Status code 404 : Post not found!
       return errorHandler(404, "Post not found!", next);

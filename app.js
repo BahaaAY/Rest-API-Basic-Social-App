@@ -56,6 +56,7 @@ const connectDB = async () => {
     //if try works
     await mongoose.connect(MONGODB_URI);
     console.log("Mongodb Connected...");
+    app.listen(8080);
   } catch (err) {
     //if try fails
     catchErr(err, next);
