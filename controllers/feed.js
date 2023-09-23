@@ -208,3 +208,53 @@ exports.deletePost = (req, res, next) => {
     catchErr(err, next);
   }
 };
+
+exports.getStatus = (req, res, next) => {
+  const userId = req.userId;
+  User.findById(userId)
+    .then((user) => {
+      if (!user) {
+        return errorHandler(404, "User Not Found");
+      }
+      res.status(200).json({
+        message: "Status Retreived Successfully",
+        status: user.status,
+      });
+    })
+    .catch((err) => {
+      catchErr(err, next);
+    });
+};
+
+exports.updateStatus = (req, res, next) => {
+  const userId = req.userId;
+  const newStatus = req.body.status;
+  const errors = validationResult(req);
+  try {
+    if (!errors.isEmpty()) {
+      // Status code 422 means something went wrong with the validation
+      return errorHandler(422, "Validation failed, entered data is incorrect.");
+    }
+
+    console.log("Updating Status!: ", userId, newStatus);
+    User.findById(userId)
+      .then((user) => {
+        if (!user) {
+          return errorHandler(404, "User Not Found");
+        }
+        user.status = newStatus;
+        user.save();
+      })
+      .then((result) => {
+        res.status(200).json({
+          message: "Status Updated Successfully",
+          status: newStatus,
+        });
+      })
+      .catch((err) => {
+        catchErr(err, next);
+      });
+  } catch (err) {
+    catchErr(err, next);
+  }
+};
