@@ -4,7 +4,8 @@ const jwt = require("jsonwebtoken");
 
 const User = require("../models/user");
 
-const errorHandler = require("../util/errorHandler");
+const errorHandler = require("../util/errorHandler").errorHandler;
+const catchErr = require("../util/errorHandler").catchErr;
 
 const JWT_SECRET = require("../util/credentials").JWT_SECRET;
 
@@ -14,10 +15,14 @@ exports.signup = (req, res, next) => {
   const name = req.body.name;
   const errors = validationResult(req);
 
-  if (!errors.isEmpty()) {
-    const error = new Error("Validation failed.");
-    error.data = errors.array();
-    return errorHandler(422, error, next);
+  try {
+    if (!errors.isEmpty()) {
+      const error = new Error("Validation failed.");
+      error.data = errors.array();
+      return errorHandler(422, error);
+    }
+  } catch (err) {
+    catchErr(err, next);
   }
 
   // Hash password
@@ -39,7 +44,7 @@ exports.signup = (req, res, next) => {
         .json({ message: "User created!", userId: result._id });
     })
     .catch((err) => {
-      errorHandler(500, "Creating user failed.", next);
+      catchErr(err, next);
     });
 };
 exports.login = (req, res, next) => {
@@ -49,14 +54,14 @@ exports.login = (req, res, next) => {
   User.findOne({ email: email })
     .then((user) => {
       if (!user) {
-        return errorHandler(401, "User not found.", next);
+        return errorHandler(401, "User not found.");
       }
       loadedUser = user;
       return bcrypt.compare(password, user.password);
     })
     .then((isEqual) => {
       if (!isEqual) {
-        return errorHandler(401, "User not found.", next);
+        return errorHandler(401, "User not found.");
       }
       // Generate token
       const token = jwt.sign(
@@ -72,6 +77,6 @@ exports.login = (req, res, next) => {
         .json({ token: token, userId: loadedUser._id.toString() });
     })
     .catch((err) => {
-      errorHandler(500, err, next);
+      catchErr(err, next);
     });
 };

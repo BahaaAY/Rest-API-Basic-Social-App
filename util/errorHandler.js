@@ -1,4 +1,4 @@
-module.exports = (statusCode, err, next) => {
+exports.errorHandler = (statusCode, err) => {
   console.log("Handling Error!");
   let error;
   if (err instanceof Error) {
@@ -9,5 +9,11 @@ module.exports = (statusCode, err, next) => {
     error = new Error(err);
   }
   error.statusCode = statusCode;
-  next(error);
+  throw error;
+};
+exports.catchErr = (err, next) => {
+  if (!err.statusCode) {
+    err.statusCode = 500;
+  }
+  next(err);
 };

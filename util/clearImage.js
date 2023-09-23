@@ -1,10 +1,15 @@
 const fs = require("fs");
-const errorHandler = require("./errorHandler");
+const { catchErr } = require("./errorHandler");
+const errorHandler = require("./errorHandler").errorHandler;
 
 module.exports = (filePath, next) => {
-  fs.unlink(filePath, (err) => {
-    if (err) {
-      errorHandler(500, "Deleting image failed.", next);
-    }
-  });
+  try {
+    fs.unlink(filePath, (err) => {
+      if (err) {
+        errorHandler(500, "Deleting image failed.");
+      }
+    });
+  } catch {
+    catchErr(err, next);
+  }
 };
