@@ -8,6 +8,7 @@ const feedRoutes = require("./routes/feed");
 const authRoutes = require("./routes/auth");
 
 const fileFilter = require("./util/fileFilter");
+const { catchErr } = require("./util/errorHandler");
 const username = require("./util/credentials").username;
 const password = require("./util/credentials").password;
 
@@ -50,13 +51,17 @@ app.use((error, req, res, next) => {
   res.status(status).json({ message: message, data: data });
 });
 
-// Connect to MongoDB
-mongoose
-  .connect(MONGODB_URI)
-  .then((result) => {
-    console.log("Connected to MongoDB");
-    app.listen(8080);
-  })
-  .catch((err) => {
-    console.log(err);
-  });
+const connectDB = async () => {
+  try {
+    //if try works
+    await mongoose.connect(MONGODB_URI);
+    console.log("Mongodb Connected...");
+  } catch (err) {
+    //if try fails
+    catchErr(err, next);
+    //exit process with failure
+    process.exit(1);
+  }
+};
+
+connectDB();

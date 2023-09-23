@@ -8,39 +8,32 @@ const postAuth = require("../util/auth").postAuth;
 const clearImage = require("../util/clearImage");
 const { catchErr } = require("../util/errorHandler");
 
-exports.getPosts = (req, res, next) => {
-  let totalItems;
+exports.getPosts = async (req, res, next) => {
   const currentPage = req.query.page || 1;
   const perPage = 2;
-  Post.find()
-    .countDocuments()
-    .then((count) => {
-      totalItems = count;
-      return Post.find()
-        .limit(perPage)
-        .skip((currentPage - 1) * perPage);
-    })
-    .then((posts) => {
-      // Status code 200 means everything is ok
-      return res.status(200).json({
-        message: "Fetched posts successfully.",
-        posts: posts,
-        totalItems: totalItems,
-      });
-    })
-    .catch((err) => {
-      catchErr(err, next);
+  try {
+    const totalItems = await Post.find().countDocuments();
+
+    const posts = await Post.find()
+      .limit(perPage)
+      .skip((currentPage - 1) * perPage);
+    // Status code 200 means everything is ok
+    return res.status(200).json({
+      message: "Fetched posts successfully.",
+      posts: posts,
+      totalItems: totalItems,
     });
+  } catch (err) {
+    catchErr(err, next);
+  }
 };
 
-exports.createPost = (req, res, next) => {
+exports.createPost = async (req, res, next) => {
   console.log("Creating Post!");
   // Create post in db
   const title = req.body.title;
   const content = req.body.content;
   const userId = req.userId;
-  let postCreator;
-
   const errors = validationResult(req);
   try {
     if (!errors.isEmpty()) {
@@ -62,53 +55,39 @@ exports.createPost = (req, res, next) => {
       imageUrl: req.file.path,
       creator: userId,
     });
-    post
-      .save()
-      .then((result) => {
-        // Status code 201 means something was created
-        return User.findById(userId);
-      })
-      .then((user) => {
-        postCreator = user;
-        user.posts.push(post);
-        return user.save();
-      })
-      .then((result) => {
-        return res.status(201).json({
-          message: "Post created successfully!",
-          post: post,
-          creator: postCreator,
-        });
-      })
-      .catch((err) => {
-        errorHandler(500, "Creating post failed.", next);
-      });
+    await post.save();
+    const user = await User.findById(userId);
+    user.posts.push(post);
+    await user.save();
+    return res.status(201).json({
+      message: "Post created successfully!",
+      post: post,
+      creator: user,
+    });
   } catch (err) {
     catchErr(err, next);
   }
 };
 
-exports.getPost = (req, res, next) => {
+exports.getPost = async (req, res, next) => {
   const postId = req.params.postId;
-
-  Post.findById(postId)
-    .then((post) => {
-      if (!post) {
-        // Status code 404 : Post not found!
-        return errorHandler(404, "Post not found!", next);
-      }
-      // Status code 200 means everything is ok
-      return res.status(200).json({
-        message: "Post fetched.",
-        post: post,
-      });
-    })
-    .catch((err) => {
-      catchErr(err, next);
+  try {
+    const post = await Post.findById(postId).populate("creator");
+    if (!post) {
+      // Status code 404 : Post not found!
+      return errorHandler(404, "Post not found!", next);
+    }
+    // Status code 200 means everything is ok
+    return res.status(200).json({
+      message: "Post fetched.",
+      post: post,
     });
+  } catch (err) {
+    catchErr(err, next);
+  }
 };
 
-exports.updatePost = (req, res, next) => {
+exports.updatePost = async (req, res, next) => {
   const postId = req.params.postId;
   const userId = req.userId;
   const errors = validationResult(req);
@@ -127,41 +106,32 @@ exports.updatePost = (req, res, next) => {
       // Status code 422 means something went wrong with the validation
       return errorHandler(422, "No Image provided!", next);
     }
-
     console.log("Updating Post!: ", postId, title, content, imageUrl);
-    Post.findById(postId)
-      .then((post) => {
-        if (!post) {
-          // Status code 404 : Post not found!
-          return errorHandler(404, "Post not found!", next);
-        }
-
-        post.title = title;
-        post.content = content;
-        postAuth(post, userId);
-        if (imageUrl != post.imageUrl) {
-          // Delete old image
-          console.log("Deleting old image!");
-          clearImage(post.imageUrl, next);
-        }
-        post.imageUrl = imageUrl;
-        return post.save();
-      })
-      .then((result) => {
-        // Status code 200 means everything is ok
-        return res.status(200).json({
-          message: "Post updated!",
-          post: result,
-        });
-      })
-      .catch((err) => {
-        catchErr(err, next);
-      });
+    const post = await Post.findById(postId);
+    if (!post) {
+      // Status code 404 : Post not found!
+      return errorHandler(404, "Post not found!", next);
+    }
+    post.title = title;
+    post.content = content;
+    postAuth(post, userId);
+    if (imageUrl != post.imageUrl) {
+      // Delete old image
+      console.log("Deleting old image!");
+      clearImage(post.imageUrl, next);
+    }
+    post.imageUrl = imageUrl;
+    const savedResult = await post.save();
+    // Status code 200 means everything is ok
+    return res.status(200).json({
+      message: "Post updated!",
+      post: savedResult,
+    });
   } catch (err) {
     catchErr(err, next);
   }
 };
-exports.deletePost = (req, res, next) => {
+exports.deletePost = async (req, res, next) => {
   const postId = req.params.postId;
   const userId = req.userId;
   let postToDelete;
@@ -170,63 +140,49 @@ exports.deletePost = (req, res, next) => {
     if (!postId) {
       return errorHandler(404, "Post not found!", next);
     }
-    Post.findById(postId)
-      .then((post) => {
-        if (!post) {
-          // Status code 404 : Post not found!
-          return errorHandler(404, "Post not found!", next);
-        }
-        postToDelete = post;
+    const post = await Post.findById(postId);
+    if (!post) {
+      // Status code 404 : Post not found!
+      return errorHandler(404, "Post not found!", next);
+    }
 
-        //check if user is post owner
-        postAuth(post, userId);
+    //check if user is post owner
+    postAuth(post, userId);
 
-        postToDelete = post;
-        return Post.deleteOne({ _id: postId });
-      })
-      .then((result) => {
-        return User.findById(postToDelete.creator);
-      })
-      .then((user) => {
-        // Delete from user posts
-        user.posts.pull(postToDelete._id);
-        return user.save();
-      })
-      .then((result) => {
-        // Delete post image
-        console.log("Deleting post image!");
-        clearImage(postToDelete.imageUrl);
-        // Status code 200 means everything is ok
-        return res.status(200).json({
-          message: "Post deleted!",
-        });
-      })
-      .catch((err) => {
-        catchErr(err, next);
-      });
+    await Post.deleteOne({ _id: postId });
+    const user = await User.findById(post.creator);
+    // Delete from user posts
+    user.posts.pull(post._id);
+    await user.save();
+    // Delete post image
+    console.log("Deleting post image!");
+    clearImage(postToDelete.imageUrl);
+    // Status code 200 means everything is ok
+    return res.status(200).json({
+      message: "Post deleted!",
+    });
   } catch (err) {
     catchErr(err, next);
   }
 };
 
-exports.getStatus = (req, res, next) => {
+exports.getStatus = async (req, res, next) => {
   const userId = req.userId;
-  User.findById(userId)
-    .then((user) => {
-      if (!user) {
-        return errorHandler(404, "User Not Found");
-      }
-      res.status(200).json({
-        message: "Status Retreived Successfully",
-        status: user.status,
-      });
-    })
-    .catch((err) => {
-      catchErr(err, next);
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return errorHandler(404, "User Not Found");
+    }
+    res.status(200).json({
+      message: "Status Retreived Successfully",
+      status: user.status,
     });
+  } catch (err) {
+    catchErr(err, next);
+  }
 };
 
-exports.updateStatus = (req, res, next) => {
+exports.updateStatus = async (req, res, next) => {
   const userId = req.userId;
   const newStatus = req.body.status;
   const errors = validationResult(req);
@@ -235,25 +191,17 @@ exports.updateStatus = (req, res, next) => {
       // Status code 422 means something went wrong with the validation
       return errorHandler(422, "Validation failed, entered data is incorrect.");
     }
-
     console.log("Updating Status!: ", userId, newStatus);
-    User.findById(userId)
-      .then((user) => {
-        if (!user) {
-          return errorHandler(404, "User Not Found");
-        }
-        user.status = newStatus;
-        user.save();
-      })
-      .then((result) => {
-        res.status(200).json({
-          message: "Status Updated Successfully",
-          status: newStatus,
-        });
-      })
-      .catch((err) => {
-        catchErr(err, next);
-      });
+    const user = await User.findById(userId);
+    if (!user) {
+      return errorHandler(404, "User Not Found");
+    }
+    user.status = newStatus;
+    await user.save();
+    res.status(200).json({
+      message: "Status Updated Successfully",
+      status: newStatus,
+    });
   } catch (err) {
     catchErr(err, next);
   }
