@@ -185,9 +185,17 @@ exports.deletePost = (req, res, next) => {
         return Post.deleteOne({ _id: postId });
       })
       .then((result) => {
+        return User.findById(postToDelete.creator);
+      })
+      .then((user) => {
+        // Delete from user posts
+        user.posts.pull(postToDelete._id);
+        return user.save();
+      })
+      .then((result) => {
         // Delete post image
         console.log("Deleting post image!");
-        clearImage(postToDelete.imageUrl, next);
+        clearImage(postToDelete.imageUrl);
         // Status code 200 means everything is ok
         return res.status(200).json({
           message: "Post deleted!",
