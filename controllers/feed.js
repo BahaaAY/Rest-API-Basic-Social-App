@@ -1,6 +1,7 @@
 const { validationResult } = require("express-validator");
 
 const Post = require("../models/post");
+const User = require("../models/user");
 
 const errorHandler = require("../util/errorHandler");
 
@@ -36,6 +37,9 @@ exports.createPost = (req, res, next) => {
   // Create post in db
   const title = req.body.title;
   const content = req.body.content;
+  const userId = req.userId;
+  let postCreator;
+
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     // Status code 422 means something went wrong with the validation
@@ -54,15 +58,24 @@ exports.createPost = (req, res, next) => {
     title: title,
     content: content,
     imageUrl: req.file.path,
-    creator: { name: "Bahaa" },
+    creator: userId,
   });
   post
     .save()
     .then((result) => {
       // Status code 201 means something was created
+      return User.findById(userId);
+    })
+    .then((user) => {
+      postCreator = user;
+      user.posts.push(post);
+      return user.save();
+    })
+    .then((result) => {
       return res.status(201).json({
         message: "Post created successfully!",
-        post: result,
+        post: post,
+        creator: postCreator,
       });
     })
     .catch((err) => {
