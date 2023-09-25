@@ -8,6 +8,8 @@ const postAuth = require("../util/auth").postAuth;
 const clearImage = require("../util/clearImage");
 const { catchErr } = require("../util/errorHandler");
 
+const io = require("../socket");
+
 exports.getPosts = async (req, res, next) => {
   const currentPage = req.query.page || 1;
   const perPage = 2;
@@ -60,6 +62,10 @@ exports.createPost = async (req, res, next) => {
     const user = await User.findById(userId);
     user.posts.push(post);
     await user.save();
+    io.getIO().emit("posts", {
+      action: "create",
+      post: post,
+    });
     return res.status(201).json({
       message: "Post created successfully!",
       post: post,

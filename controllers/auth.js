@@ -29,11 +29,11 @@ exports.signup = async (req, res, next) => {
       password: hashedPassword,
       name: name,
     });
-    await user.save();
+    const createdUser = await user.save();
     // Status code 201 means something was created
     return res
       .status(201)
-      .json({ message: "User created!", userId: result._id });
+      .json({ message: "User created!", userId: createdUser._id });
   } catch (err) {
     catchErr(err, next);
   }
