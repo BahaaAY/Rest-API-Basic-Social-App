@@ -9,6 +9,7 @@ const clearImage = require("../util/clearImage");
 const { catchErr } = require("../util/errorHandler");
 
 const io = require("../socket");
+const { isObjectIdOrHexString } = require("mongoose");
 
 exports.getPosts = async (req, res, next) => {
   const currentPage = req.query.page || 1;
@@ -18,6 +19,7 @@ exports.getPosts = async (req, res, next) => {
 
     const posts = await Post.find()
       .limit(perPage)
+      .sort({ createdAt: -1 }) // -1 means descending order
       .skip((currentPage - 1) * perPage)
       .populate("creator", "name");
     // Status code 200 means everything is ok
@@ -164,6 +166,11 @@ exports.deletePost = async (req, res, next) => {
     // Delete post image
     console.log("Deleting post image!");
     clearImage(post.imageUrl);
+
+    io.getIO().emit("posts", {
+      action: "delete",
+      post: postId,
+    });
     // Status code 200 means everything is ok
     return res.status(200).json({
       message: "Post deleted!",
