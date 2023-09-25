@@ -56,10 +56,20 @@ const connectDB = async () => {
     //if try works
     await mongoose.connect(MONGODB_URI);
     console.log("Mongodb Connected...");
-    app.listen(8080);
+    const server = app.listen(8080);
+    const io = require("socket.io")(server, {
+      cors: {
+        origin: "http://localhost:3000",
+        methods: ["GET", "POST"],
+      },
+    });
+    io.on("connection", (socket) => {
+      console.log("Client Connected!");
+    });
   } catch (err) {
     //if try fails
-    catchErr(err, next);
+    err.statusCode = 500;
+    console.log(err);
     //exit process with failure
     process.exit(1);
   }
