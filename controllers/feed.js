@@ -64,7 +64,7 @@ exports.createPost = async (req, res, next) => {
     await user.save();
     io.getIO().emit("posts", {
       action: "create",
-      post: post,
+      post: { ...post._doc, creator: { _id: userId, name: user.name } },
     });
     return res.status(201).json({
       message: "Post created successfully!",
@@ -114,7 +114,7 @@ exports.updatePost = async (req, res, next) => {
       return errorHandler(422, "No Image provided!", next);
     }
     console.log("Updating Post!: ", postId, title, content, imageUrl);
-    const post = await Post.findById(postId);
+    const post = await Post.findById(postId).populate("creator", "name");
     if (!post) {
       // Status code 404 : Post not found!
       return errorHandler(404, "Post not found!", next);
@@ -129,6 +129,7 @@ exports.updatePost = async (req, res, next) => {
     }
     post.imageUrl = imageUrl;
     const savedResult = await post.save();
+    io.getIO().emit("posts", { action: "update", post: post });
     // Status code 200 means everything is ok
     return res.status(200).json({
       message: "Post updated!",
@@ -141,7 +142,6 @@ exports.updatePost = async (req, res, next) => {
 exports.deletePost = async (req, res, next) => {
   const postId = req.params.postId;
   const userId = req.userId;
-  let postToDelete;
   try {
     console.log("Deleting Post!: ", postId);
     if (!postId) {
@@ -163,7 +163,7 @@ exports.deletePost = async (req, res, next) => {
     await user.save();
     // Delete post image
     console.log("Deleting post image!");
-    clearImage(postToDelete.imageUrl);
+    clearImage(post.imageUrl);
     // Status code 200 means everything is ok
     return res.status(200).json({
       message: "Post deleted!",
